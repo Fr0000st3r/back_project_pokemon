@@ -11,7 +11,7 @@ use App\Http\Controllers\PokemonController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'session.timeout'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/pokemons', [PokemonController::class, 'index']);
     Route::post('/pokemons', [PokemonController::class, 'store']);
