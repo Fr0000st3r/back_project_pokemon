@@ -1,0 +1,91 @@
+version: '3.8'
+
+networks:
+  pokemon_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  pokemon_images:
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: pokemon_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: pokemon_db
+      MYSQL_USER: pokemon_user
+      MYSQL_PASSWORD: pokemon1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - pokemon_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: pokemon_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root1234
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - pokemon_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pokemon_backend
+    restart: always
+    environment:
+      APP_ENV: local
+      APP_KEY: ""
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: pokemon_db
+      DB_USERNAME: pokemon_user
+      DB_PASSWORD: pokemon1234
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+      - pokemon_images:/var/www/html/storage/app/public/pokemons
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - pokemon_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pokemon_frontend
+    restart: always
+    environment:
+      PUBLIC_API_URL: http://localhost:8000/api
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - pokemon_net
